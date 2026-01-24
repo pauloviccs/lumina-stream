@@ -102,7 +102,42 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
     };
 
     return (
-        <div ref={containerRef} className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
+    const [showControls, setShowControls] = useState(true);
+    const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleUserActivity = () => {
+        setShowControls(true);
+        if (controlsTimeoutRef.current) {
+            clearTimeout(controlsTimeoutRef.current);
+        }
+        controlsTimeoutRef.current = setTimeout(() => {
+            if (isPlaying) {
+                setShowControls(false);
+            }
+        }, 3000);
+    };
+
+    useEffect(() => {
+        // Initial timeout start
+        handleUserActivity();
+        return () => {
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        };
+    }, [isPlaying]); // Re-run when play state changes to potentially hide/show
+
+    return (
+        <div
+            ref={containerRef}
+            className={cn(
+                "group relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10",
+                !showControls && isPlaying ? "cursor-none" : "cursor-default"
+            )}
+            onMouseMove={handleUserActivity}
+            onClick={handleUserActivity}
+            onMouseLeave={() => {
+                if (isPlaying) setShowControls(false);
+            }}
+        >
             <video
                 ref={videoRef}
                 poster={poster}
@@ -115,7 +150,10 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
             />
 
             {/* Controls Overlay - Glassmorphism Restored */}
-            <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <div className={cn(
+                "absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300",
+                showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}>
 
                 {/* Progress Bar */}
                 <div className="relative h-1 w-full bg-white/20 cursor-pointer" onClick={(e) => {
