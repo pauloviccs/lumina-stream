@@ -18,7 +18,7 @@ export default async function Home() {
         {/* Section: Live Channels */}
         <section>
           <ChannelCarousel title="Canais Populares">
-            {(channels || []).filter(c => c.name.includes('BBB')).map((channel) => (
+            {(channels || []).map((channel) => (
               <Link key={channel.id} href={`/watch/${channel.id}`}>
                 <ChannelCard
                   name={channel.name}
