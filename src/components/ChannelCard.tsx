@@ -47,7 +47,7 @@ export function ChannelCard({ name, category, image, viewers, onClick }: Channel
             <div className="absolute top-2 right-2 z-40">
                 <div className="flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 backdrop-blur-md border border-white/10">
                     <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[10px] font-bold text-white">{viewers.toLocaleString()}</span>
+                    <span className="text-[10px] font-bold text-white">{(viewers || 0).toLocaleString()}</span>
                 </div>
             </div>
 
