@@ -19,20 +19,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     const channel = channelRes.data;
     let sources = sourcesRes.data || [];
 
-    // Rename sources to Câmera 1, 2, 3...
-    sources = sources.map((s, index) => {
-        // If it already has a good name, keep it, otherwise rename
-        // Check if label creates conflict or just simple enumeration needed
-        // For BBB, we usually want simple "Câmera 1", "Câmera 2" etc.
-        // Let's preserve specific names if they exist (e.g. "Mosaico"), but if generic, rename.
 
-        let newLabel = s.label;
-        if (s.label.includes('BBB') || s.label.includes('Camera') || s.label.includes('Cam')) {
-            newLabel = `Câmera ${index + 1}`;
-        }
-
-        return { ...s, label: newLabel };
-    });
 
     // Sort sources: "Câmera" first (natural sort), then alphabetical
     sources.sort((a, b) => {

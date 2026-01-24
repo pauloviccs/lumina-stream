@@ -139,16 +139,31 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
                             {isPlaying ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
                         </button>
 
-                        <button
-                            onClick={() => {
+                        <div className="flex items-center gap-2 group/volume">
+                            <button onClick={() => {
                                 const newMuted = !isMuted;
                                 setIsMuted(newMuted);
                                 if (videoRef.current) videoRef.current.muted = newMuted;
-                            }}
-                            className="text-white/70 hover:text-white transition-colors"
-                        >
-                            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                        </button>
+                            }} className="text-white focus:text-indigo-400">
+                                {isMuted || (videoRef.current?.volume === 0) ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                            </button>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.1"
+                                defaultValue="1"
+                                onChange={(e) => {
+                                    const vol = parseFloat(e.target.value);
+                                    if (videoRef.current) {
+                                        videoRef.current.volume = vol;
+                                        videoRef.current.muted = vol === 0;
+                                        setIsMuted(vol === 0);
+                                    }
+                                }}
+                                className="w-0 overflow-hidden transition-all duration-300 group-hover/volume:w-24 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                            />
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4 relative">

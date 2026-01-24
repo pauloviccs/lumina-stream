@@ -42,14 +42,9 @@ export function HeroSection() {
                         transition={{ duration: 0.8, delay: 0.3 }}
                         className="flex gap-4 pt-4"
                     >
-                        {/* Assuming ID 1 is the main BBB channel based on context, or user can click the cards below */}
-                        <a href="/watch/1" className="flex items-center gap-2 rounded-xl bg-white px-8 py-4 font-bold text-black transition-transform hover:scale-105 active:scale-95">
+                        <a href="/watch/1fc929af-5820-4b1e-9cc7-e954fd5044cd" className="flex items-center gap-2 rounded-xl bg-white px-8 py-4 font-bold text-black transition-transform hover:scale-105 active:scale-95">
                             <Play className="h-5 w-5 fill-current" />
                             Assistir Agora
-                        </a>
-                        <a href="#channels" className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 font-bold text-white backdrop-blur-md transition-colors hover:bg-white/10">
-                            <Info className="h-5 w-5" />
-                            Mais Detalhes
                         </a>
                     </motion.div>
                 </div>
