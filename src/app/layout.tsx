@@ -20,10 +20,19 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        {/* Polyfill for Smart TVs (LG WebOS/Tizen) which often lack ResizeObserver */}
+        {/* Global Error Trap for TV Debugging */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
+                window.onerror = function(msg, url, line, col, error) {
+                   var d = document.createElement('div');
+                   d.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:rgba(200,0,0,0.9);color:white;z-index:9999;font-size:20px;padding:20px;pointer-events:none;white-space:pre-wrap;';
+                   d.innerHTML = 'FATAL JS ERROR:\\n' + msg + '\\nLine: ' + line + ':' + col;
+                   document.documentElement.appendChild(d);
+                   return false;
+                };
+                
+                // Polyfill Check
                 if (typeof ResizeObserver === 'undefined') {
                   document.write('<script src="https://unpkg.com/resize-observer-polyfill@1.5.1/dist/ResizeObserver.global.js"><\\/script>');
                 }
