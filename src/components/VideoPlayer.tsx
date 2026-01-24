@@ -39,8 +39,17 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
                 },
             });
 
-            const proxyUrl = `/api/proxy?url=${encodeURIComponent(src)}`;
-            hls.loadSource(proxyUrl);
+            // BYPASS PROXY for "online" domains (Cloudfront tokens) to avoid Geo-blocking/401
+            // These links are likely IP-locked to the user's region (Brazil).
+            // Proxying them via Vercel (US) causes 401 Unauthorized.
+            const shouldUseProxy = !src.includes('.online');
+
+            const finalUrl = shouldUseProxy
+                ? `/api/proxy?url=${encodeURIComponent(src)}`
+                : src;
+
+            console.log(`Loading Stream: ${finalUrl} (Proxy: ${shouldUseProxy})`);
+            hls.loadSource(finalUrl);
             hls.attachMedia(video);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
