@@ -35,4 +35,11 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5"
   }
+},
+"browserslist": [
+  "chrome >= 47",
+  "firefox >= 45",
+  "ios >= 9",
+  "last 2 versions"
+]
 }
