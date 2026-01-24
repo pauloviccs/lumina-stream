@@ -52,9 +52,11 @@ export function StreamSelector({ sources, channelName }: SourceSelectorProps) {
                     {sources.map((source) => (
                         <button
                             key={source.id}
+                            /* TV Remotes often trigger Pointer/Touch events differently than Mouse clicks */
                             onClick={() => setSelectedSource(source)}
+                            onPointerUp={() => setSelectedSource(source)}
                             className={cn(
-                                "flex flex-col items-start justify-center rounded-lg p-3 transition-colors border-2",
+                                "flex flex-col items-start justify-center rounded-lg p-3 transition-colors border-2 cursor-pointer active:scale-95",
                                 selectedSource.id === source.id
                                     ? "bg-indigo-900 border-indigo-500 text-white"
                                     : "bg-white/5 border-transparent text-white/70 hover:bg-white/10 hover:border-white/30"

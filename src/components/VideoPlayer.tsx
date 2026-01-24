@@ -122,8 +122,9 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
                 className="h-full w-full object-cover"
                 onTimeUpdate={handleTimeUpdate}
                 onClick={togglePlay}
-                muted={isMuted}
+                muted={isMuted} // Muted is required for Autoplay in many browsers
                 playsInline
+                autoPlay // FORCE AUTOPLAY
             />
 
             {/* Simplied Controls for TV Performance */}
