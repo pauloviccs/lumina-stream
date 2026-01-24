@@ -43,13 +43,7 @@ export function ChannelCard({ name, category, image, viewers, onClick }: Channel
             {/* Gradient & Text */}
             <div className="absolute inset-0 z-30 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
 
-            {/* Content Labels */}
-            <div className="absolute top-2 right-2 z-40">
-                <div className="flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 backdrop-blur-md border border-white/10">
-                    <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[10px] font-bold text-white">{(viewers || 0).toLocaleString()}</span>
-                </div>
-            </div>
+
 
             <div className="absolute bottom-0 left-0 z-40 w-full p-4 transform transition-transform duration-500 group-hover:translate-y-[-4px]">
                 <p className="text-xs font-medium text-indigo-300">{category}</p>
