@@ -101,7 +101,6 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
         }
     };
 
-    return (
     const [showControls, setShowControls] = useState(true);
     const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -118,12 +117,11 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
     };
 
     useEffect(() => {
-        // Initial timeout start
         handleUserActivity();
         return () => {
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         };
-    }, [isPlaying]); // Re-run when play state changes to potentially hide/show
+    }, [isPlaying]);
 
     return (
         <div
