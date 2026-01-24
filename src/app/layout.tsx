@@ -1,4 +1,3 @@
-import "core-js/stable";
 import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google"; // Using Outfit for headings, Inter for body
 import "./globals.css";
@@ -19,33 +18,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <head>
-        {/* Global Error Trap for TV Debugging */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-                window.onerror = function(msg, url, line, col, error) {
-                   // Ignore generic cross-origin script errors (usually benign or unfixable)
-                   if (msg === 'Script error.') {
-                       console.warn('Ignored cross-origin script error');
-                       return false; 
-                   }
-
-                   var d = document.createElement('div');
-                   d.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:rgba(200,0,0,0.9);color:white;z-index:9999;font-size:20px;padding:20px;pointer-events:none;white-space:pre-wrap;';
-                   d.innerHTML = 'FATAL JS ERROR:\\n' + msg + '\\nLine: ' + line + ':' + col;
-                   document.documentElement.appendChild(d);
-                   return false;
-                };
-                
-                // Polyfill Check
-                if (typeof ResizeObserver === 'undefined') {
-                  document.write('<script src="https://unpkg.com/resize-observer-polyfill@1.5.1/dist/ResizeObserver.global.js" crossorigin="anonymous"><\\/script>');
-                }
-              `
-          }}
-        />
-      </head>
       <body className={cn(
         "min-h-screen bg-background font-sans text-foreground antialiased",
         inter.variable,

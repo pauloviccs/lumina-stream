@@ -1,15 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Force transpilation for packages that might ship modern syntax
-  transpilePackages: ['lucide-react', 'framer-motion', 'vaul', 'sonner', 'clsx', 'tailwind-merge', 'hls.js'],
-
-  // Disable strictly modern features for better TV compatibility
-  reactStrictMode: false,
-
   images: {
-    // Disable optimization if causing issues on older engines (optional, but safe for TVs)
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -22,6 +14,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'media.discordapp.net',
       }
     ],
   },

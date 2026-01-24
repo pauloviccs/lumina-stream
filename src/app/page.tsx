@@ -18,12 +18,13 @@ export default async function Home() {
         {/* Section: Live Channels */}
         <section>
           <ChannelCarousel title="Canais Populares">
-            {(channels || []).map((channel) => (
+            {(channels || []).filter(c => c.name.includes('BBB')).map((channel) => (
               <Link key={channel.id} href={`/watch/${channel.id}`}>
                 <ChannelCard
                   name={channel.name}
                   category={channel.category}
-                  imageColor={channel.image_color}
+                  viewers={channel.viewers}
+                  image="https://media.discordapp.net/attachments/1346139494608404492/1464732118796996710/bbb-16.png?ex=69768996&is=69753816&hm=7c49860c67049376b820c4962a179d5d748f8091ac44517f931401a791bdb365&=&format=webp&quality=lossless&width=816&height=544"
                 />
               </Link>
             ))}
