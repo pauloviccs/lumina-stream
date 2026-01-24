@@ -18,6 +18,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* Polyfill for Smart TVs (LG WebOS/Tizen) which often lack ResizeObserver */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+                if (typeof ResizeObserver === 'undefined') {
+                  document.write('<script src="https://unpkg.com/resize-observer-polyfill@1.5.1/dist/ResizeObserver.global.js"><\\/script>');
+                }
+              `
+          }}
+        />
+      </head>
       <body className={cn(
         "min-h-screen bg-background font-sans text-foreground antialiased",
         inter.variable,
