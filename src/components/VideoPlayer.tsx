@@ -35,8 +35,8 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
         if (Hls.isSupported() && src.endsWith('.m3u8')) {
             addLog("HLS Supported");
             hls = new Hls({
-                // Simple config for TV
-                enableWorker: true,
+                // DISABLE WORKER FOR TV (Common crash source on WebOS)
+                enableWorker: false,
                 lowLatencyMode: false,
                 backBufferLength: 90,
             });

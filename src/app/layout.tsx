@@ -25,6 +25,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
                 window.onerror = function(msg, url, line, col, error) {
+                   // Ignore generic cross-origin script errors (usually benign or unfixable)
+                   if (msg === 'Script error.') {
+                       console.warn('Ignored cross-origin script error');
+                       return false; 
+                   }
+
                    var d = document.createElement('div');
                    d.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:rgba(200,0,0,0.9);color:white;z-index:9999;font-size:20px;padding:20px;pointer-events:none;white-space:pre-wrap;';
                    d.innerHTML = 'FATAL JS ERROR:\\n' + msg + '\\nLine: ' + line + ':' + col;
@@ -34,7 +40,7 @@ export default function RootLayout({
                 
                 // Polyfill Check
                 if (typeof ResizeObserver === 'undefined') {
-                  document.write('<script src="https://unpkg.com/resize-observer-polyfill@1.5.1/dist/ResizeObserver.global.js"><\\/script>');
+                  document.write('<script src="https://unpkg.com/resize-observer-polyfill@1.5.1/dist/ResizeObserver.global.js" crossorigin="anonymous"><\\/script>');
                 }
               `
           }}
