@@ -28,7 +28,10 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
         if (!video) return;
 
         let hls: Hls | null = null;
-        const onError = (e: Event) => addLog(`Video Error: ${(e.target as HTMLVideoElement).error?.message}`);
+        const onError = (e: Event) => {
+            const el = e.target as HTMLVideoElement;
+            addLog(`Video Error: ${el.error ? el.error.message : 'Unknown'}`);
+        };
 
         video.addEventListener('error', onError);
 
@@ -56,7 +59,7 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
             hls.on(Hls.Events.ERROR, (event, data) => {
                 addLog(`HLS Err: ${data.type} - ${data.details}`);
                 if (data.fatal) {
-                    hls?.destroy();
+                    if (hls) hls.destroy();
                 }
             });
 

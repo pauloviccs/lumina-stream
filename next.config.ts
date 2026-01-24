@@ -1,8 +1,9 @@
+```
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Force transpilation for packages that might ship modern syntax
-  transpilePackages: ['lucide-react', 'framer-motion', 'vaul', 'sonner', 'clsx', 'tailwind-merge'],
+  transpilePackages: ['lucide-react', 'framer-motion', 'vaul', 'sonner', 'clsx', 'tailwind-merge', 'hls.js'],
 
   // Disable strictly modern features for better TV compatibility
   reactStrictMode: false,
