@@ -1,3 +1,4 @@
+import "core-js/stable";
 import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google"; // Using Outfit for headings, Inter for body
 import "./globals.css";
