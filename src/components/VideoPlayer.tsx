@@ -19,68 +19,57 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
     const [showSettings, setShowSettings] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1);
 
+    const [debugLogs, setDebugLogs] = useState<string[]>([]);
+    const addLog = (msg: string) => setDebugLogs(prev => [msg, ...prev].slice(0, 10));
+
     useEffect(() => {
+        addLog(`Init Player: ${src}`);
         const video = videoRef.current;
         if (!video) return;
 
         let hls: Hls | null = null;
+        const onError = (e: Event) => addLog(`Video Error: ${(e.target as HTMLVideoElement).error?.message}`);
+
+        video.addEventListener('error', onError);
 
         if (Hls.isSupported() && src.endsWith('.m3u8')) {
+            addLog("HLS Supported");
             hls = new Hls({
+                // Simple config for TV
                 enableWorker: true,
                 lowLatencyMode: false,
                 backBufferLength: 90,
-                maxBufferLength: 30,
-                maxMaxBufferLength: 600,
-                fragLoadingTimeOut: 20000,
-                manifestLoadingTimeOut: 20000,
-                xhrSetup: function (xhr, url) {
-                    xhr.withCredentials = false;
-                },
             });
 
-            // BYPASS PROXY for "online" domains (Cloudfront tokens) to avoid Geo-blocking/401
-            // These links are likely IP-locked to the user's region (Brazil).
-            // Proxying them via Vercel (US) causes 401 Unauthorized.
             const shouldUseProxy = !src.includes('.online');
+            const finalUrl = shouldUseProxy ? `/api/proxy?url=${encodeURIComponent(src)}` : src;
 
-            const finalUrl = shouldUseProxy
-                ? `/api/proxy?url=${encodeURIComponent(src)}`
-                : src;
-
-            console.log(`Loading Stream: ${finalUrl} (Proxy: ${shouldUseProxy})`);
+            addLog(`Loading: ${finalUrl.slice(0, 50)}...`);
             hls.loadSource(finalUrl);
             hls.attachMedia(video);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                console.log("Manifest loaded, attempting play");
-                // Auto-play is tricky with browsers, but we try
-                if (isPlaying) video.play().catch(e => console.error("Play error:", e));
+                addLog("Manifest Parsed");
+                if (isPlaying) video.play().catch(e => addLog(`Play Fail: ${e.message}`));
             });
 
-            hls.on(Hls.Events.ERROR, function (event, data) {
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                addLog(`HLS Err: ${data.type} - ${data.details}`);
                 if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            hls?.startLoad();
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            hls?.recoverMediaError();
-                            break;
-                        default:
-                            hls?.destroy();
-                            break;
-                    }
+                    hls?.destroy();
                 }
             });
 
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            addLog("Native HLS");
             video.src = src;
         } else {
+            addLog("Direct Src");
             video.src = src;
         }
 
         return () => {
+            video.removeEventListener('error', onError);
             if (hls) hls.destroy();
         };
     }, [src]);
@@ -88,7 +77,7 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
     const togglePlay = () => {
         if (!videoRef.current) return;
         if (videoRef.current.paused) {
-            videoRef.current.play();
+            videoRef.current.play().catch(e => addLog(`Play Err: ${e.message}`));
             setIsPlaying(true);
         } else {
             videoRef.current.pause();
@@ -99,7 +88,7 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
     const toggleFullscreen = () => {
         if (!containerRef.current) return;
         if (!document.fullscreenElement) {
-            containerRef.current.requestFullscreen();
+            containerRef.current.requestFullscreen().catch(e => addLog(`FS Err: ${e}`));
         } else {
             document.exitFullscreen();
         }
@@ -115,13 +104,18 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
 
     const handleTimeUpdate = () => {
         if (videoRef.current && videoRef.current.duration) {
-            const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
-            setProgress(progress || 0);
+            const val = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+            setProgress(val || 0);
         }
     };
 
     return (
-        <div ref={containerRef} className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
+        <div ref={containerRef} className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-black border border-white/20">
+            {/* DEBUG OVERLAY FOR TV */}
+            <div className="absolute top-0 left-0 bg-black/80 text-green-400 text-xs p-2 z-50 pointer-events-none font-mono max-h-40 overflow-hidden opacity-50">
+                {debugLogs.map((l, i) => <div key={i}>{l}</div>)}
+            </div>
+
             <video
                 ref={videoRef}
                 poster={poster}
@@ -132,75 +126,39 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
                 playsInline
             />
 
-            {/* Controls Overlay */}
-            <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-
+            {/* Simplied Controls for TV Performance */}
+            <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 to-transparent">
                 {/* Progress Bar */}
-                <div className="relative h-1 w-full bg-white/20 cursor-pointer" onClick={(e) => {
+                <div className="relative h-2 w-full bg-white/30 cursor-pointer" onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const pos = (e.clientX - rect.left) / rect.width;
                     if (videoRef.current) videoRef.current.currentTime = pos * videoRef.current.duration;
                 }}>
                     <div
-                        className="absolute h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                        className="absolute h-full bg-indigo-500"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
 
-                {/* Buttons */}
+                {/* Buttons Row */}
                 <div className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={togglePlay}
-                            className="rounded-full bg-white/10 p-2 text-white backdrop-blur-md hover:bg-white/20 transition-all active:scale-95"
-                        >
-                            {isPlaying ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
+                    <div className="flex items-center gap-6">
+                        <button onClick={togglePlay} className="p-2 bg-white/10 rounded-full hover:bg-white/20 focus:ring-2 focus:ring-white">
+                            {isPlaying ? <Pause size={24} className="text-white" /> : <Play size={24} className="text-white" fill="currentColor" />}
                         </button>
-
-                        <button
-                            onClick={() => {
-                                const newMuted = !isMuted;
-                                setIsMuted(newMuted);
-                                if (videoRef.current) videoRef.current.muted = newMuted;
-                            }}
-                            className="text-white/70 hover:text-white transition-colors"
-                        >
-                            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                        <button onClick={() => {
+                            const newMuted = !isMuted;
+                            setIsMuted(newMuted);
+                            if (videoRef.current) videoRef.current.muted = newMuted;
+                        }} className="text-white focus:text-indigo-400">
+                            {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-4 relative">
-                        {/* Settings Menu */}
-                        {showSettings && (
-                            <div className="absolute bottom-full right-0 mb-4 w-32 overflow-hidden rounded-lg border border-white/10 bg-black/90 text-sm p-1 backdrop-blur-xl">
-                                <div className="px-2 py-1 text-xs text-white/50 font-bold uppercase tracking-wider">Speed</div>
-                                {[0.5, 1, 1.5, 2].map(rate => (
-                                    <button
-                                        key={rate}
-                                        onClick={() => changePlaybackRate(rate)}
-                                        className={cn(
-                                            "w-full px-2 py-1.5 text-left rounded-md transition-colors",
-                                            playbackRate === rate ? "bg-white/20 text-white" : "text-white/70 hover:bg-white/10"
-                                        )}
-                                    >
-                                        {rate}x
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        <button
-                            onClick={() => setShowSettings(!showSettings)}
-                            className="text-white/70 hover:text-white transition-colors"
-                        >
-                            <Settings size={20} className={cn("transition-transform duration-500", showSettings && "rotate-90")} />
-                        </button>
-
-                        <button
-                            onClick={toggleFullscreen}
-                            className="text-white/70 hover:text-white transition-colors"
-                        >
-                            <Maximize size={20} />
+                    {/* Right Settings */}
+                    <div className="flex items-center gap-4">
+                        <button onClick={toggleFullscreen} className="text-white focus:text-indigo-400">
+                            <Maximize size={24} />
                         </button>
                     </div>
                 </div>

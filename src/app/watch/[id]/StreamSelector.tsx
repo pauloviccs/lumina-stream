@@ -21,60 +21,47 @@ export function StreamSelector({ sources, channelName }: SourceSelectorProps) {
     const [selectedSource, setSelectedSource] = useState<Source | null>(sources[0] || null);
 
     if (!selectedSource) {
-        return <div className="text-white/50">Nenhuma fonte disponível para este canal.</div>;
+        return <div className="text-white/50">Nenhuma fonte disponível.</div>;
     }
 
     return (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="flex flex-col lg:flex-row gap-8 pb-10">
             {/* Main Content (Player) */}
-            <div className="lg:col-span-2 space-y-6">
-                <VideoPlayer
-                    src={selectedSource.url}
-                />
+            <div className="flex-1 space-y-4">
+                <VideoPlayer src={selectedSource.url} />
 
-                <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-4 backdrop-blur-md">
+                {/* Info Bar - Solid Background for TV Performance */}
+                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-stone-900 p-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/20 text-green-400">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-900 text-green-400">
                             <PlayCircle size={20} />
                         </div>
                         <div className="text-sm">
                             <p className="font-medium text-white">Assistindo: {selectedSource.label}</p>
-                            <p className="text-white/40">Qualidade: {selectedSource.quality}</p>
+                            <p className="text-white/50">Qualidade: {selectedSource.quality}</p>
                         </div>
                     </div>
-
-                    <button className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20">
-                        <AlertTriangle size={14} />
-                        Reportar Erro
-                    </button>
                 </div>
             </div>
 
             {/* Sidebar (Sources) */}
-            <div className="h-fit rounded-2xl border border-white/10 bg-black/20 p-6 backdrop-blur-xl">
-                <h3 className="mb-4 font-display text-lg font-bold text-white">Fontes de Transmissão</h3>
+            <div className="w-full lg:w-80 h-fit rounded-2xl border border-white/10 bg-stone-900 p-6">
+                <h3 className="mb-4 text-lg font-bold text-white">Câmeras / Fontes</h3>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
+                <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
                     {sources.map((source) => (
                         <button
                             key={source.id}
                             onClick={() => setSelectedSource(source)}
                             className={cn(
-                                "relative flex flex-col items-center justify-center rounded-xl p-4 transition-all duration-300",
+                                "flex flex-col items-start justify-center rounded-lg p-3 transition-colors border-2",
                                 selectedSource.id === source.id
-                                    ? "bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.5)] ring-1 ring-white/50 scale-105 z-10"
-                                    : "bg-white/5 hover:bg-white/10 hover:scale-[1.02]"
+                                    ? "bg-indigo-900 border-indigo-500 text-white"
+                                    : "bg-white/5 border-transparent text-white/70 hover:bg-white/10 hover:border-white/30"
                             )}
                         >
-                            <span className={cn(
-                                "mb-1 text-sm font-bold text-center",
-                                selectedSource.id === source.id ? "text-white" : "text-white/70"
-                            )}>
-                                {source.label}
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider text-white/40 bg-black/30 px-2 py-0.5 rounded-full">
-                                {source.quality}
-                            </span>
+                            <span className="text-sm font-bold">{source.label}</span>
+                            <span className="text-[10px] uppercase opacity-60">{source.quality}</span>
                         </button>
                     ))}
                 </div>
