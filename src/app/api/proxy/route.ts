@@ -13,13 +13,6 @@ export async function GET(request: NextRequest) {
     try {
         const headers: HeadersInit = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "*/*",
-            "Accept-Language": "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "cross-site",
-            "Pragma": "no-cache",
-            "Cache-Control": "no-cache",
         };
 
         // SMART REFERER STRATEGY
