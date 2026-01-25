@@ -32,7 +32,8 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
                 backBufferLength: 90,
             });
 
-            // ALWAYS USE PROXY to handle CORS and Referer headers correctly
+            // ALWAYS USE PROXY to provide an automatic solution (No User Extension required)
+            // We are attempting to header-spoof the IP lock in the backend.
             const shouldUseProxy = true;
             const finalUrl = shouldUseProxy ? `/api/proxy?url=${encodeURIComponent(src)}` : src;
 

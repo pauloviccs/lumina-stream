@@ -35,6 +35,13 @@ export async function GET(request: NextRequest) {
         headers["Referer"] = referer;
         headers["Origin"] = new URL(referer).origin;
 
+        // AUTHENTICATION / IP BYPASS
+        // Forward the client's IP to try and trick the upstream into validating the token against the user's IP
+        // instead of the Vercel Server's IP.
+        const ip = request.headers.get("x-forwarded-for") || "1.1.1.1";
+        headers["X-Forwarded-For"] = ip;
+        headers["X-Real-IP"] = ip;
+
         const response = await fetch(url, { headers });
 
         if (!response.ok) {
