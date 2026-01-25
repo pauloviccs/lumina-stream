@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-    const url = request.nextUrl.searchParams.get("url");
+    let url = request.nextUrl.searchParams.get("url");
     const refererParam = request.nextUrl.searchParams.get("referer");
+
+    if (url) url = url.trim();
 
     if (!url) {
         return NextResponse.json({ error: "Missing URL parameter" }, { status: 400 });

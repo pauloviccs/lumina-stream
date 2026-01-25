@@ -34,8 +34,9 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
 
             // ALWAYS USE PROXY to provide an automatic solution (No User Extension required)
             // We are attempting to header-spoof the IP lock in the backend.
+            const cleanSrc = src.trim();
             const shouldUseProxy = true;
-            const finalUrl = shouldUseProxy ? `/api/proxy?url=${encodeURIComponent(src)}` : src;
+            const finalUrl = shouldUseProxy ? `/api/proxy?url=${encodeURIComponent(cleanSrc)}` : cleanSrc;
 
             hls.loadSource(finalUrl);
             hls.attachMedia(video);
