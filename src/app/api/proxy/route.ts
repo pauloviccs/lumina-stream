@@ -15,17 +15,10 @@ export async function GET(request: NextRequest) {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         };
 
-        // SMART REFERER STRATEGY
-        // 1. Use provided 'referer' param if available
-        // 2. Fallback to the target URL's origin (self-referencing), which mimics direct navigation and often works
-        let referer = refererParam;
-        if (!referer) {
-            try {
-                referer = new URL(url).origin + "/";
-            } catch (e) {
-                referer = "https://multicanaishd.best/";
-            }
-        }
+        // STRICT REFERER STRATEGY (Validated via Curl)
+        // The upstream server whitelists specific referers.
+        // We force this known-good referer for all requests to bypass the 401 check.
+        const referer = "https://multicanaishd.best/";
 
         headers["Referer"] = referer;
         headers["Origin"] = new URL(referer).origin;
