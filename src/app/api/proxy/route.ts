@@ -20,8 +20,18 @@ export async function GET(request: NextRequest) {
             "Cache-Control": "no-cache",
         };
 
-        // Strict Referer and Origin mimicking
-        const referer = refererParam || "https://multicanaishd.best/";
+        // SMART REFERER STRATEGY
+        // 1. Use provided 'referer' param if available
+        // 2. Fallback to the target URL's origin (self-referencing), which mimics direct navigation and often works
+        let referer = refererParam;
+        if (!referer) {
+            try {
+                referer = new URL(url).origin + "/";
+            } catch (e) {
+                referer = "https://multicanaishd.best/";
+            }
+        }
+
         headers["Referer"] = referer;
         headers["Origin"] = new URL(referer).origin;
 
