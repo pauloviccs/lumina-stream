@@ -32,11 +32,17 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
                 backBufferLength: 90,
             });
 
-            // ALWAYS USE PROXY to provide an automatic solution (No User Extension required)
-            // We are attempting to header-spoof the IP lock in the backend.
+            // SMART PROXY: Skip proxy for IP-locked token URLs
+            // URLs with "/token/" are validated against the client's IP by the upstream server.
+            // Since the token was generated for the user's IP (not Vercel's), we must play directly.
             const cleanSrc = src.trim();
-            const shouldUseProxy = true;
+            const isIpLockedToken = cleanSrc.includes('/token/');
+            const shouldUseProxy = !isIpLockedToken;
             const finalUrl = shouldUseProxy ? `/api/proxy?url=${encodeURIComponent(cleanSrc)}` : cleanSrc;
+
+            if (isIpLockedToken) {
+                console.warn('[VideoPlayer] IP-locked token detected, bypassing proxy for direct playback.');
+            }
 
             hls.loadSource(finalUrl);
             hls.attachMedia(video);
