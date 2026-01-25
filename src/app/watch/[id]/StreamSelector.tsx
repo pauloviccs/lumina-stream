@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { PlayCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,17 +19,32 @@ interface SourceSelectorProps {
 
 export function StreamSelector({ sources, channelName }: SourceSelectorProps) {
     const [selectedSource, setSelectedSource] = useState<Source | null>(sources[0] || null);
+    const [isTheaterMode, setIsTheaterMode] = useState(false);
 
     if (!selectedSource) {
         return <div className="text-white/50">Nenhuma fonte disponível.</div>;
     }
 
+    const toggleTheaterMode = () => {
+        setIsTheaterMode((prev) => !prev);
+    };
+
     return (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className={cn(
+            "grid gap-8 transition-all duration-500 ease-in-out",
+            isTheaterMode
+                ? "grid-cols-1"
+                : "grid-cols-1 lg:grid-cols-3"
+        )}>
             {/* Main Content (Player) */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className={cn(
+                "space-y-6 transition-all duration-500 ease-in-out",
+                isTheaterMode ? "col-span-1" : "lg:col-span-2"
+            )}>
                 <VideoPlayer
                     src={selectedSource.url}
+                    isTheaterMode={isTheaterMode}
+                    onTheaterModeToggle={toggleTheaterMode}
                 />
 
                 <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-4 backdrop-blur-md">
@@ -50,15 +65,23 @@ export function StreamSelector({ sources, channelName }: SourceSelectorProps) {
                 </div>
             </div>
 
-            {/* Sidebar (Sources) */}
-            <div className="h-fit rounded-2xl border border-white/10 bg-black/20 p-6 backdrop-blur-xl">
+            {/* Sidebar (Sources) - Moves below player in theater mode */}
+            <div className={cn(
+                "rounded-2xl border border-white/10 bg-black/20 p-6 backdrop-blur-xl",
+                "transition-all duration-500 ease-in-out",
+                isTheaterMode ? "h-fit order-last" : "h-fit"
+            )}>
                 <h3 className="mb-4 font-display text-lg font-bold text-white">Fontes de Transmissão</h3>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
+                <div className={cn(
+                    "grid gap-3 transition-all duration-500",
+                    isTheaterMode
+                        ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9"
+                        : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-2"
+                )}>
                     {sources.map((source) => (
                         <button
                             key={source.id}
-                            /* Keep PointerEvents for hybrid touch/mouse support (good practice anyway) */
                             onClick={() => setSelectedSource(source)}
                             onPointerUp={() => setSelectedSource(source)}
                             className={cn(

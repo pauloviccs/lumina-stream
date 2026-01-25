@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, RectangleHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Hls from "hls.js";
 
 interface VideoPlayerProps {
     src: string;
     poster?: string;
+    isTheaterMode?: boolean;
+    onTheaterModeToggle?: () => void;
 }
 
-export function VideoPlayer({ src, poster }: VideoPlayerProps) {
+export function VideoPlayer({ src, poster, isTheaterMode, onTheaterModeToggle }: VideoPlayerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -236,6 +238,21 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
                         >
                             <Settings size={20} className={cn("transition-transform duration-500", showSettings && "rotate-90")} />
                         </button>
+
+                        {/* Theater Mode Button */}
+                        {onTheaterModeToggle && (
+                            <button
+                                onClick={onTheaterModeToggle}
+                                className={cn(
+                                    "transition-colors",
+                                    isTheaterMode ? "text-indigo-400" : "text-white/70 hover:text-white"
+                                )}
+                                title={isTheaterMode ? "Sair do Modo Teatro" : "Modo Teatro"}
+                                aria-label={isTheaterMode ? "Sair do Modo Teatro" : "Ativar Modo Teatro"}
+                            >
+                                <RectangleHorizontal size={20} />
+                            </button>
+                        )}
 
                         <button
                             onClick={toggleFullscreen}
