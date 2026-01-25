@@ -32,8 +32,8 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
                 backBufferLength: 90,
             });
 
-            // BYPASS PROXY for "online" domains (Cloudfront tokens) to avoid Geo-blocking/401
-            const shouldUseProxy = !src.includes('.online');
+            // ALWAYS USE PROXY to handle CORS and Referer headers correctly
+            const shouldUseProxy = true;
             const finalUrl = shouldUseProxy ? `/api/proxy?url=${encodeURIComponent(src)}` : src;
 
             hls.loadSource(finalUrl);
