@@ -4,6 +4,9 @@ import Link from "next/link";
 // Client component for source selection
 import { StreamSelector } from "./StreamSelector";
 
+// Force dynamic rendering to always get fresh streams
+export const dynamic = 'force-dynamic';
+
 // Channels that support dynamic scraping
 const SCRAPE_SUPPORTED_CHANNELS: Record<string, string> = {
     "big-brother-brasil-26": "big-brother-brasil-26",
