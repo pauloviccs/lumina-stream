@@ -80,9 +80,14 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         console.log(`[WatchPage] Channel "${channel.name}" supports scraping, fetching dynamic streams...`);
 
         // Get the base URL for internal API calls
-        const baseUrl = process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'http://localhost:3000';
+        // Priority: Production URL > Preview URL > localhost
+        const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+            ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+            : process.env.VERCEL_URL
+                ? `https://${process.env.VERCEL_URL}`
+                : 'http://localhost:3000';
+
+        console.log(`[WatchPage] Using baseUrl: ${baseUrl}`);
 
         const dynamicSources = await fetchDynamicStreams(scrapableSlug, baseUrl);
 
