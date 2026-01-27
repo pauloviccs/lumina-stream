@@ -7,7 +7,10 @@ import { StreamSelector } from "./StreamSelector";
 // Channels that support dynamic scraping
 const SCRAPE_SUPPORTED_CHANNELS: Record<string, string> = {
     "big-brother-brasil-26": "big-brother-brasil-26",
+    "big brother brasil 26": "big-brother-brasil-26",
+    "big brother brasil": "big-brother-brasil-26",
     "bbb 26": "big-brother-brasil-26",
+    "bbb26": "big-brother-brasil-26",
     // Add more as needed
 };
 
