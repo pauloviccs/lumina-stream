@@ -81,35 +81,33 @@ export async function GET(request: NextRequest) {
 
         for (let i = 0; i < Math.min(playerMatches.length, MAX_PLAYERS); i++) {
             const match = playerMatches[i];
-            const playerUrl = match[1];
+            let playerUrl = match[1];
             const label = match[2].trim();
 
             console.log(`[Scraper] Processing ${label}: ${playerUrl}`);
 
-            const streamUrl = await extractStreamFromPlayer(playerUrl);
-
-            if (streamUrl) {
-                sources.push({
-                    id: `scraped-${i + 1}`,
-                    label: label,
-                    url: streamUrl,
-                    quality: "HD",
-                    type: "m3u8",
-                });
-            } else if (playerUrl.startsWith('http')) {
-                // If we can't extract m3u8, add the player URL as iframe fallback
-                sources.push({
-                    id: `iframe-${i + 1}`,
-                    label: `${label} (Embed)`,
-                    url: playerUrl,
-                    quality: "HD",
-                    type: "iframe",
-                });
+            // Ensure valid URL
+            if (!playerUrl.startsWith('http')) {
+                if (playerUrl.startsWith('//')) {
+                    playerUrl = 'https:' + playerUrl;
+                } else {
+                    continue;
+                }
             }
+
+            // ALWAYS use iframe for these streams - they are IP-locked
+            // so m3u8 extraction doesn't work when proxied
+            sources.push({
+                id: `iframe-${i + 1}`,
+                label: label,
+                url: playerUrl,
+                quality: "HD",
+                type: "iframe",
+            });
         }
 
-        if (sources.length === 0) {
-            console.warn(`[Scraper] No streams extracted for ${channelPath}`);
+        console.log(`[Scraper] Successfully found ${sources.length} streams for ${channelPath}`);
+        if (sources.length === 0) { // Added back the if condition for correctness
             return NextResponse.json({
                 error: "Could not extract any streams",
                 hint: "Player pages may have changed structure"
