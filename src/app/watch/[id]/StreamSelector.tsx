@@ -10,6 +10,7 @@ interface Source {
     label: string;
     url: string;
     quality: string;
+    type?: "m3u8" | "iframe"; // Optional for backward compatibility
 }
 
 interface SourceSelectorProps {
@@ -41,11 +42,27 @@ export function StreamSelector({ sources, channelName }: SourceSelectorProps) {
                 "space-y-6 transition-all duration-500 ease-in-out",
                 isTheaterMode ? "col-span-1" : "lg:col-span-2"
             )}>
-                <VideoPlayer
-                    src={selectedSource.url}
-                    isTheaterMode={isTheaterMode}
-                    onTheaterModeToggle={toggleTheaterMode}
-                />
+                {/* Render VideoPlayer for m3u8 or iframe for embed sources */}
+                {selectedSource.type === "iframe" ? (
+                    <div className={cn(
+                        "aspect-video w-full rounded-2xl overflow-hidden bg-black/80",
+                        isTheaterMode ? "h-[70vh]" : ""
+                    )}>
+                        <iframe
+                            src={selectedSource.url}
+                            className="w-full h-full border-0"
+                            allowFullScreen
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            referrerPolicy="no-referrer-when-downgrade"
+                        />
+                    </div>
+                ) : (
+                    <VideoPlayer
+                        src={selectedSource.url}
+                        isTheaterMode={isTheaterMode}
+                        onTheaterModeToggle={toggleTheaterMode}
+                    />
+                )}
 
                 <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-4 backdrop-blur-md">
                     <div className="flex items-center gap-3">

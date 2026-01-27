@@ -16,6 +16,7 @@ interface StreamSource {
     label: string;
     url: string;
     quality: string;
+    type: "m3u8" | "iframe"; // m3u8 for HLS streams, iframe for embedded players
 }
 
 export async function GET(request: NextRequest) {
@@ -93,6 +94,16 @@ export async function GET(request: NextRequest) {
                     label: label,
                     url: streamUrl,
                     quality: "HD",
+                    type: "m3u8",
+                });
+            } else if (playerUrl.startsWith('http')) {
+                // If we can't extract m3u8, add the player URL as iframe fallback
+                sources.push({
+                    id: `iframe-${i + 1}`,
+                    label: `${label} (Embed)`,
+                    url: playerUrl,
+                    quality: "HD",
+                    type: "iframe",
                 });
             }
         }
