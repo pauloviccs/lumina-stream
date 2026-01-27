@@ -1,5 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Map of known stream domains to their required referers
+const REFERER_MAP: Record<string, string> = {
+    // embedtvonline streams
+    "vipcanaisplay.site": "https://embedtvonline.com/",
+
+    // rdcanais.top streams (uses imgcontent.xyz CDN)
+    "imgcontent.xyz": "https://rdcanais.top/",
+    "image-storage": "https://rdcanais.top/",
+
+    // nossoplayeronlinehd streams
+    "nossoplayeronlinehd": "https://nossoplayeronlinehd.online/",
+
+    // meuplayeronlinehd streams
+    "meuplayeronlinehd": "https://meuplayeronlinehd.com/",
+
+    // redecanaistv streams
+    "redecanaistv": "https://redecanaistv.fm/",
+
+    // Default fallback
+    "cloudfront-net.online": "https://multicanaishd.best/",
+    "default": "https://multicanaishd.best/",
+};
+
+// Get the best referer for a given URL
+function getRefererForUrl(url: string): string {
+    try {
+        const hostname = new URL(url).hostname.toLowerCase();
+
+        for (const [domain, referer] of Object.entries(REFERER_MAP)) {
+            if (hostname.includes(domain)) {
+                return referer;
+            }
+        }
+    } catch (e) {
+        // Fall through to default
+    }
+    return REFERER_MAP["default"];
+}
+
 export async function GET(request: NextRequest) {
     let url = request.nextUrl.searchParams.get("url");
     const refererParam = request.nextUrl.searchParams.get("referer");
@@ -11,29 +50,23 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+        // Use passed referer or determine from URL
+        const referer = refererParam || getRefererForUrl(url);
+
         const headers: HeadersInit = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": referer,
+            "Origin": new URL(referer).origin,
         };
 
-        // STRICT REFERER STRATEGY (Validated via Curl)
-        // The upstream server whitelists specific referers.
-        // We force this known-good referer for all requests to bypass the 401 check.
-        const referer = "https://multicanaishd.best/";
-
-        headers["Referer"] = referer;
-        headers["Origin"] = new URL(referer).origin;
-
-        // AUTHENTICATION / IP BYPASS
-        // Forward the client's IP to try and trick the upstream into validating the token against the user's IP
-        // instead of the Vercel Server's IP.
-        const ip = request.headers.get("x-forwarded-for") || "1.1.1.1";
-        headers["X-Forwarded-For"] = ip;
-        headers["X-Real-IP"] = ip;
+        console.log(`[Proxy] Fetching ${url.substring(0, 80)}... with Referer: ${referer}`);
 
         const response = await fetch(url, { headers });
 
         if (!response.ok) {
-            console.error(`Upstream Fetch failed: ${response.status} ${response.statusText} for ${url}`);
+            console.error(`[Proxy] Upstream failed: ${response.status} ${response.statusText} for ${url}`);
             return NextResponse.json(
                 { error: `Failed to fetch source: ${response.statusText}` },
                 { status: response.status }
@@ -63,14 +96,14 @@ export async function GET(request: NextRequest) {
                     absoluteUrl = new URL(trimmed, basePath).href;
                 }
 
-                // Wrap in proxy
-                return `${request.nextUrl.origin}/api/proxy?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(headers["Referer"] as string)}`;
+                // Wrap in proxy, passing the current referer for consistency
+                return `${request.nextUrl.origin}/api/proxy?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(referer)}`;
             }).join('\n');
 
             body = text;
         } else {
             // Binary pass-through for Video Segments (ts) and others
-            body = response.body as any; // Cast to any to satisfy TS for ReadableStream
+            body = response.body as any;
         }
 
         const responseHeaders = new Headers();
@@ -79,8 +112,6 @@ export async function GET(request: NextRequest) {
         responseHeaders.set("Cache-Control", "no-cache, no-store, must-revalidate");
 
         // Forward important headers for streaming/seeking
-        // NOTE: We do NOT forward Content-Length because fetch() may decompress the body,
-        // causing a mismatch with the upstream header. Chunked transfer is safer.
         const contentRange = response.headers.get("Content-Range");
         if (contentRange) responseHeaders.set("Content-Range", contentRange);
 
@@ -90,7 +121,7 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error("Proxy Error:", error);
+        console.error("[Proxy] Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

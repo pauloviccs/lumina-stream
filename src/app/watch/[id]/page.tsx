@@ -1,10 +1,54 @@
 import { createClient } from "@/utils/supabase/server";
-import { VideoPlayer } from "@/components/VideoPlayer";
-import { ArrowLeft, PlayCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 // Client component for source selection
 import { StreamSelector } from "./StreamSelector";
+
+// Channels that support dynamic scraping
+const SCRAPE_SUPPORTED_CHANNELS: Record<string, string> = {
+    "big-brother-brasil-26": "big-brother-brasil-26",
+    "bbb 26": "big-brother-brasil-26",
+    // Add more as needed
+};
+
+// Helper: Check if channel name matches a scrapeable channel
+function getScrapableSlug(channelName: string): string | null {
+    const normalized = channelName.toLowerCase().trim();
+
+    // Direct match
+    if (SCRAPE_SUPPORTED_CHANNELS[normalized]) {
+        return SCRAPE_SUPPORTED_CHANNELS[normalized];
+    }
+
+    // Partial match
+    for (const [key, value] of Object.entries(SCRAPE_SUPPORTED_CHANNELS)) {
+        if (normalized.includes(key) || key.includes(normalized)) {
+            return value;
+        }
+    }
+
+    return null;
+}
+
+// Helper: Fetch dynamic streams from scraper API
+async function fetchDynamicStreams(channelSlug: string, baseUrl: string): Promise<any[]> {
+    try {
+        const response = await fetch(`${baseUrl}/api/scrape-stream?channel=${encodeURIComponent(channelSlug)}`, {
+            cache: 'no-store', // Always fresh
+        });
+
+        if (!response.ok) {
+            console.error(`[WatchPage] Scraper returned ${response.status}`);
+            return [];
+        }
+
+        const data = await response.json();
+        return data.sources || [];
+    } catch (error) {
+        console.error("[WatchPage] Failed to fetch dynamic streams:", error);
+        return [];
+    }
+}
 
 export default async function WatchPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -19,24 +63,41 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     const channel = channelRes.data;
     let sources = sourcesRes.data || [];
 
+    if (!channel) {
+        return <div className="p-12 text-white">Canal não encontrado.</div>;
+    }
 
+    // Check if this channel supports dynamic scraping
+    const scrapableSlug = getScrapableSlug(channel.name);
+
+    if (scrapableSlug) {
+        console.log(`[WatchPage] Channel "${channel.name}" supports scraping, fetching dynamic streams...`);
+
+        // Get the base URL for internal API calls
+        const baseUrl = process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : 'http://localhost:3000';
+
+        const dynamicSources = await fetchDynamicStreams(scrapableSlug, baseUrl);
+
+        if (dynamicSources.length > 0) {
+            console.log(`[WatchPage] Using ${dynamicSources.length} dynamic streams`);
+            sources = dynamicSources;
+        } else {
+            console.warn(`[WatchPage] No dynamic streams found, falling back to Supabase sources`);
+        }
+    }
 
     // Sort sources: "Câmera" first (natural sort), then alphabetical
-    sources.sort((a, b) => {
-        const isCameraA = a.label.startsWith('Câmera');
-        const isCameraB = b.label.startsWith('Câmera');
+    sources.sort((a: any, b: any) => {
+        const isCameraA = a.label?.startsWith('Câmera') || false;
+        const isCameraB = b.label?.startsWith('Câmera') || false;
 
         if (isCameraA && !isCameraB) return -1;
         if (!isCameraA && isCameraB) return 1;
 
-        return a.label.localeCompare(b.label, undefined, { numeric: true });
+        return (a.label || '').localeCompare(b.label || '', undefined, { numeric: true });
     });
-
-
-
-    if (!channel) {
-        return <div className="p-12 text-white">Canal não encontrado.</div>;
-    }
 
     return (
         <div className="min-h-screen p-6 md:p-12">
