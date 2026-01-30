@@ -26,6 +26,15 @@ export default function RootLayout({
         <main className="relative flex min-h-screen flex-col overflow-hidden">
           {children}
         </main>
+
+        {/* Footer - VICCS Lumia Streaming */}
+        <footer className="relative z-50 border-t border-white/10 bg-black/50 backdrop-blur-xl py-6">
+          <div className="container mx-auto px-6 text-center">
+            <p className="text-sm text-white/60">
+              © VICCS - Lumia Streaming® - 2026
+            </p>
+          </div>
+        </footer>
       </body>
     </html>
   );

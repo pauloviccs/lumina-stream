@@ -86,6 +86,11 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
             : process.env.VERCEL_URL
                 ? `https://${process.env.VERCEL_URL}`
                 : 'http://localhost:3000';
+        // // Priority: Custom site URL > VERCEL_URL > localhost
+        // // Set NEXT_PUBLIC_SITE_URL in Vercel to https://lumiastream.vercel.app
+        // const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
+        //     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+        //     || 'http://localhost:3000';
 
         console.log(`[WatchPage] Using baseUrl: ${baseUrl}`);
 
