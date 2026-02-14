@@ -1,12 +1,15 @@
 # Project Overview
 
 ## Project Name
+
 Lumina Stream
 
 ## Description
+
 Plataforma de streaming de vídeo ao vivo e sob demanda, estilo TV por internet (IPTV). Permite que usuários assistam canais de TV e filmes diretamente no navegador via player HLS. Integra-se ao Supabase como backend (autenticação, banco de dados, storage).
 
 ## Tech Stack
+
 - **Framework:** Next.js 16.1.4 (App Router)
 - **Linguagem:** TypeScript 5.x
 - **UI Library:** React 19.2.3
@@ -23,9 +26,11 @@ Plataforma de streaming de vídeo ao vivo e sob demanda, estilo TV por internet 
 - **Build:** PostCSS + Autoprefixer
 
 ## Folder Structure
+
 ```text
 lumina-stream/
 ├── .agent/                    # Configurações do agente
+│   ├── CHANNEL_PUSHING.md     # Docs: método de channel pushing (BBB)
 │   └── overview/
 │       └── PROJECT_STATUS.md  # Este arquivo
 ├── img/
@@ -70,22 +75,25 @@ lumina-stream/
 ```
 
 ## Current Features Implemented
+
 - **Homepage** com hero section e carrossel de canais (dados do Supabase)
 - **Player de vídeo HLS** com suporte a múltiplas fontes/streams por canal
 - **Página dinâmica `/watch/[id]`** com seletor de fonte e seletor de stream
 - **API Proxy** (`/api/proxy`) para contornar CORS em streams HLS
-- **API Scrape** (`/api/scrape-stream`) para extrair URLs de stream de páginas externas
+- **API Scrape** (`/api/scrape-stream`) para extrair URLs de stream de páginas externas (sem limite de fontes — capta todas disponíveis)
 - **Integração Supabase** completa (client + server via SSR)
 - **Design system** HSL-based com dark mode, fontes Inter/Outfit, e tokens de cor
 - **Animações** com Framer Motion nos componentes visuais
 - **Toasts** (Sonner) e **Drawers** (Vaul) disponíveis
 
 ## Work-in-Progress
+
 - Refinamento da UI do player e seletores de stream
 - Expansão do catálogo de canais e filmes
 - Possível implementação de autenticação de usuário
 
 ## Known TODOs / Missing Parts
+
 - Autenticação de usuário não implementada (Supabase Auth está configurado mas sem fluxo de login)
 - Sem testes automatizados (unit/e2e)
 - Arquivo `scrape_result.json` e `temp_html.txt` na raiz são artefatos de debug — devem ser removidos ou adicionados ao `.gitignore`
@@ -94,4 +102,4 @@ lumina-stream/
 - Sem CI/CD pipeline
 
 ---
-*Última atualização: 2026-02-14*
+*Última atualização: 2026-02-14 18:10*
