@@ -75,11 +75,10 @@ export async function GET(request: NextRequest) {
 
         console.log(`[Scraper] Found ${playerMatches.length} player URLs, extracting streams...`);
 
-        // Extract streams from first N player URLs (limit to avoid timeout)
-        const MAX_PLAYERS = 10;
+        // Extract streams from all player URLs found
         const sources: StreamSource[] = [];
 
-        for (let i = 0; i < Math.min(playerMatches.length, MAX_PLAYERS); i++) {
+        for (let i = 0; i < playerMatches.length; i++) {
             const match = playerMatches[i];
             let playerUrl = match[1];
             const label = match[2].trim();
