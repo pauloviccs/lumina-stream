@@ -37,7 +37,8 @@ export const redecanaistv: ChannelAdapter = {
         //          data-type='movie' data-post='49' data-nume='1'>
         //          <span class='title'>Câmera 1 (Acompanhe a casa)</span>
         const optionRegex = /class='dooplay_player_option[^']*'[^>]*data-type='([^']*)'[^>]*data-post='([^']*)'[^>]*data-nume='([^']*)'[^>]*>[\s\S]*?<span class='title'>([^<]*)<\/span>/gi;
-        const matches = [...html.matchAll(optionRegex)];
+        // Limit to 6 matches max to prevent Vercel timeouts and Cloudflare IP blocks (DDoS protection)
+        const matches = [...html.matchAll(optionRegex)].slice(0, 6);
 
         if (matches.length === 0) {
             console.warn(`[Adapter:redecanaistv] No dooplay_player_option found for ${channelPath}`);
@@ -89,7 +90,7 @@ export async function resolveDooPlaySources(
                     "X-Requested-With": "XMLHttpRequest",
                 },
                 body: `action=doo_player_ajax&post=${post}&nume=${nume}&type=${type}`,
-                signal: AbortSignal.timeout(8000),
+                signal: AbortSignal.timeout(4000),
             });
 
             if (!response.ok) {
