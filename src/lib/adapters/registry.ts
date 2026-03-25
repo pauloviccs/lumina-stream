@@ -14,7 +14,7 @@ import { youtube } from "./youtube";
  * 3. Adicione a entrada em CHANNEL_REGISTRY
  */
 
-async function fetchWithProxy(url: string, init?: RequestInit): Promise<Response> {
+export async function fetchWithProxy(url: string, init?: RequestInit): Promise<Response> {
     try {
         const res = await fetch(url, init);
         if (res.ok) return res;

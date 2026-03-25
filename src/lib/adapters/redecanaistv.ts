@@ -1,4 +1,5 @@
 import { ChannelAdapter, StreamSource } from "./types";
+import { fetchWithProxy } from "./registry";
 
 /**
  * Adapter: RedeCanais TV (DooPlay)
@@ -8,21 +9,6 @@ import { ChannelAdapter, StreamSource } from "./types";
  * 1. GET da página → extrai dooplay_player_option (data-post, data-nume, data-type + label)
  * 2. POST em /wp-admin/admin-ajax.php com action=doo_player_ajax → retorna embed_url
  */
-async function fetchWithProxy(url: string, init?: RequestInit): Promise<Response> {
-    try {
-        const res = await fetch(url, init);
-        if (res.ok) return res;
-        console.warn(`[ProxyFallback] Direct fetch failed for ${url} (Status: ${res.status}).`);
-        throw new Error(`HTTP ${res.status}`);
-    } catch (e) {
-        console.log(`[ProxyFallback] Trying corsproxy.io fallback for ${url}...`);
-        // Remove origin-specific headers when using proxy
-        const { "Referer": ref, ...safeHeaders } = (init?.headers as Record<string, string>) || {};
-
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-        return fetch(proxyUrl, { ...init, headers: safeHeaders });
-    }
-}
 
 export const redecanaistv: ChannelAdapter = {
     id: "redecanaistv",
