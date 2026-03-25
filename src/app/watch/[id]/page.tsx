@@ -7,28 +7,7 @@ import { resolveChannelSlug } from "@/lib/adapters/registry";
 // Force dynamic rendering to always get fresh streams
 export const dynamic = 'force-dynamic';
 
-// Helper: Fetch dynamic streams from scraper API
-async function fetchDynamicStreams(channelSlug: string, baseUrl: string) {
-    try {
-        const response = await fetch(`${baseUrl}/api/scrape-stream?channel=${encodeURIComponent(channelSlug)}`, {
-            cache: 'no-store',
-        });
-
-        if (!response.ok) {
-            console.error(`[WatchPage] Scraper returned ${response.status}`);
-            return { sources: [], status: "offline" as const };
-        }
-
-        const data = await response.json();
-        return {
-            sources: data.sources || [],
-            status: (data.status || (data.sources?.length > 0 ? "online" : "offline")) as "online" | "offline",
-        };
-    } catch (error) {
-        console.error("[WatchPage] Failed to fetch dynamic streams:", error);
-        return { sources: [], status: "offline" as const };
-    }
-}
+import { scrapeChannel } from "@/lib/adapters/registry";
 
 export default async function WatchPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -54,22 +33,19 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     if (scrapableSlug) {
         console.log(`[WatchPage] Channel "${channel.name}" supports scraping → ${scrapableSlug}`);
 
-        const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-            ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-            : process.env.VERCEL_URL
-                ? `https://${process.env.VERCEL_URL}`
-                : 'http://localhost:3000';
+        try {
+            const result = await scrapeChannel(scrapableSlug);
+            sources = result.sources || [];
+            isOffline = result.status === "offline";
 
-        console.log(`[WatchPage] Using baseUrl: ${baseUrl}`);
-
-        const result = await fetchDynamicStreams(scrapableSlug, baseUrl);
-        sources = result.sources;
-        isOffline = result.status === "offline";
-
-        if (isOffline) {
-            console.warn(`[WatchPage] All adapters offline for "${channel.name}"`);
-        } else {
-            console.log(`[WatchPage] ${sources.length} sources loaded for "${channel.name}"`);
+            if (isOffline) {
+                console.warn(`[WatchPage] All adapters offline for "${channel.name}"`);
+            } else {
+                console.log(`[WatchPage] ${sources.length} sources loaded for "${channel.name}"`);
+            }
+        } catch (error) {
+            console.error(`[WatchPage] Failed to scrape channel ${channel.name}:`, error);
+            isOffline = true;
         }
     } else {
         // Canal sem scraping — marcar como offline (sem fallback Supabase)

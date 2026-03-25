@@ -24,7 +24,7 @@ export default async function Home() {
                   name={channel.name}
                   category={channel.category}
                   viewers={channel.viewers}
-                  image="/canais/bbb-16.png"
+                  image={channel.logo_url || "/canais/bbb-16.png"}
                 />
               </Link>
             ))}
