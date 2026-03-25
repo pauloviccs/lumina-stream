@@ -14,6 +14,20 @@ import { youtube } from "./youtube";
  * 3. Adicione a entrada em CHANNEL_REGISTRY
  */
 
+async function fetchWithProxy(url: string, init?: RequestInit): Promise<Response> {
+    try {
+        const res = await fetch(url, init);
+        if (res.ok) return res;
+        console.warn(`[ProxyFallback] Direct fetch failed for ${url} (Status: ${res.status}).`);
+        throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+        console.log(`[ProxyFallback] Trying corsproxy.io fallback for ${url}...`);
+        const { "Referer": ref, ...safeHeaders } = (init?.headers as Record<string, string>) || {};
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        return fetch(proxyUrl, { ...init, headers: safeHeaders });
+    }
+}
+
 // ─── Registro de Adapters ───────────────────────────────────
 const ADAPTER_MAP: Record<string, ChannelAdapter> = {
     multicanaishd,
@@ -200,7 +214,7 @@ export async function scrapeChannel(channelSlug: string): Promise<ScrapeResult> 
 
             console.log(`[Registry] Adapter ${adapterId} → ${url}`);
 
-            const response = await fetch(url, {
+            const response = await fetchWithProxy(url, {
                 headers: adapter.getHeaders(),
                 signal: AbortSignal.timeout(10000),
             });

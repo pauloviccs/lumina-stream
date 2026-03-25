@@ -8,6 +8,22 @@ import { ChannelAdapter, StreamSource } from "./types";
  * 1. GET da página → extrai dooplay_player_option (data-post, data-nume, data-type + label)
  * 2. POST em /wp-admin/admin-ajax.php com action=doo_player_ajax → retorna embed_url
  */
+async function fetchWithProxy(url: string, init?: RequestInit): Promise<Response> {
+    try {
+        const res = await fetch(url, init);
+        if (res.ok) return res;
+        console.warn(`[ProxyFallback] Direct fetch failed for ${url} (Status: ${res.status}).`);
+        throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+        console.log(`[ProxyFallback] Trying corsproxy.io fallback for ${url}...`);
+        // Remove origin-specific headers when using proxy
+        const { "Referer": ref, ...safeHeaders } = (init?.headers as Record<string, string>) || {};
+
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        return fetch(proxyUrl, { ...init, headers: safeHeaders });
+    }
+}
+
 export const redecanaistv: ChannelAdapter = {
     id: "redecanaistv",
     name: "RedeCanais TV",
@@ -20,10 +36,14 @@ export const redecanaistv: ChannelAdapter = {
 
     getHeaders(): HeadersInit {
         return {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Referer": "https://redecanaistv.fm/",
+            "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Microsoft Edge";v="122"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.google.com/",
         };
     },
 
