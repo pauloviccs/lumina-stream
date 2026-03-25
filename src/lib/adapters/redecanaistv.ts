@@ -42,6 +42,7 @@ export const redecanaistv: ChannelAdapter = {
 
         if (matches.length === 0) {
             console.warn(`[Adapter:redecanaistv] No dooplay_player_option found for ${channelPath}`);
+            console.log(`[Adapter:redecanaistv] HTML Snapshot: ${html.substring(0, 300).replace(/\n/g, ' ')}...`);
             return [];
         }
 

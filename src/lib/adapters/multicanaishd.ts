@@ -38,6 +38,7 @@ export const multicanaishd: ChannelAdapter = {
 
         if (matches.length === 0) {
             console.warn(`[Adapter:multicanaishd] No data-url matches for ${channelPath}`);
+            console.log(`[Adapter:multicanaishd] HTML Snapshot: ${html.substring(0, 300).replace(/\n/g, ' ')}...`);
             return [];
         }
 
