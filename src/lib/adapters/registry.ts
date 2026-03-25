@@ -19,9 +19,39 @@ export async function fetchWithProxy(url: string, init?: RequestInit): Promise<R
         const res = await fetch(url, init);
         if (res.ok) return res;
         console.warn(`[ProxyFallback] Direct fetch failed for ${url} (Status: ${res.status}).`);
-        throw new Error(`HTTP ${res.status}`);
     } catch (e) {
-        console.log(`[ProxyFallback] Trying corsproxy.io fallback for ${url}...`);
+        console.warn(`[ProxyFallback] Direct fetch error for ${url}:`, e);
+    }
+
+    const isGet = !init?.method || init.method.toUpperCase() === "GET";
+
+    if (!isGet) {
+        console.log(`[ProxyFallback] Trying corsproxy.io fallback for POST ${url}...`);
+        const { "Referer": ref, ...safeHeaders } = (init?.headers as Record<string, string>) || {};
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        return fetch(proxyUrl, { ...init, headers: safeHeaders });
+    }
+
+    console.log(`[ProxyFallback] Trying allorigins.win fallback for GET ${url}...`);
+    try {
+        const allOriginsUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const proxyRes = await fetch(allOriginsUrl);
+        if (!proxyRes.ok) throw new Error(`AllOrigins HTTP ${proxyRes.status}`);
+
+        const data = await proxyRes.json();
+        const contents = data.contents;
+
+        if (!contents) throw new Error(`AllOrigins returned empty contents`);
+
+        return {
+            ok: true,
+            status: 200,
+            text: async () => contents,
+            json: async () => JSON.parse(contents),
+        } as Response;
+    } catch (proxyError) {
+        console.error(`[ProxyFallback] Allorigins failed:`, proxyError);
+        // Desperate last attempt with corsproxy.io
         const { "Referer": ref, ...safeHeaders } = (init?.headers as Record<string, string>) || {};
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
         return fetch(proxyUrl, { ...init, headers: safeHeaders });
