@@ -24,10 +24,10 @@ export async function fetchWithProxy(url: string, init?: RequestInit): Promise<R
     }
 
     const isGet = !init?.method || init.method.toUpperCase() === "GET";
+    const { "Referer": ref, ...safeHeaders } = (init?.headers as Record<string, string>) || {};
 
     if (!isGet) {
         console.log(`[ProxyFallback] Trying corsproxy.io fallback for POST ${url}...`);
-        const { "Referer": ref, ...safeHeaders } = (init?.headers as Record<string, string>) || {};
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
         return fetch(proxyUrl, { ...init, headers: safeHeaders });
     }
@@ -35,7 +35,7 @@ export async function fetchWithProxy(url: string, init?: RequestInit): Promise<R
     console.log(`[ProxyFallback] Trying allorigins.win fallback for GET ${url}...`);
     try {
         const allOriginsUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        const proxyRes = await fetch(allOriginsUrl);
+        const proxyRes = await fetch(allOriginsUrl, { ...init, headers: undefined });
         if (!proxyRes.ok) throw new Error(`AllOrigins HTTP ${proxyRes.status}`);
 
         const data = await proxyRes.json();
@@ -50,11 +50,21 @@ export async function fetchWithProxy(url: string, init?: RequestInit): Promise<R
             json: async () => JSON.parse(contents),
         } as Response;
     } catch (proxyError) {
-        console.error(`[ProxyFallback] Allorigins failed:`, proxyError);
-        // Desperate last attempt with corsproxy.io
-        const { "Referer": ref, ...safeHeaders } = (init?.headers as Record<string, string>) || {};
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-        return fetch(proxyUrl, { ...init, headers: safeHeaders });
+        console.error(`[ProxyFallback] Allorigins failed:`, (proxyError as Error).message || proxyError);
+
+        console.log(`[ProxyFallback] Trying api.codetabs.com fallback for GET ${url}...`);
+        try {
+            const codetabsUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+            const codetabsRes = await fetch(codetabsUrl, { ...init, headers: safeHeaders });
+            if (!codetabsRes.ok) throw new Error(`Codetabs HTTP ${codetabsRes.status}`);
+            return codetabsRes;
+        } catch (codetabsError) {
+            console.error(`[ProxyFallback] Codetabs failed:`, (codetabsError as Error).message || codetabsError);
+
+            console.log(`[ProxyFallback] Trying corsproxy.io fallback for GET ${url}...`);
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            return fetch(proxyUrl, { ...init, headers: safeHeaders });
+        }
     }
 }
 

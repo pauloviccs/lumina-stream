@@ -43,8 +43,8 @@ export const redecanaistv: ChannelAdapter = {
         //          data-type='movie' data-post='49' data-nume='1'>
         //          <span class='title'>Câmera 1 (Acompanhe a casa)</span>
         const optionRegex = /class='dooplay_player_option[^']*'[^>]*data-type='([^']*)'[^>]*data-post='([^']*)'[^>]*data-nume='([^']*)'[^>]*>[\s\S]*?<span class='title'>([^<]*)<\/span>/gi;
-        // Limit to 6 matches max to prevent Vercel timeouts and Cloudflare IP blocks (DDoS protection)
-        const matches = [...html.matchAll(optionRegex)].slice(0, 6);
+        // Extract ALL matches to maintain complete transmission options list
+        const matches = [...html.matchAll(optionRegex)];
 
         if (matches.length === 0) {
             console.warn(`[Adapter:redecanaistv] No dooplay_player_option found for ${channelPath}`);
@@ -84,41 +84,49 @@ export async function resolveDooPlaySources(
 
     console.log(`[Adapter:redecanaistv] Resolving ${dooplaySources.length} DooPlay URLs via AJAX...`);
 
-    const resolved = await Promise.allSettled(
-        dooplaySources.map(async (source) => {
-            const [, type, post, nume] = source.url.split(":");
+    const resolved: PromiseSettledResult<StreamSource>[] = [];
+    const BATCH_SIZE = 10;
 
-            const response = await fetch(`${siteBaseUrl}/wp-admin/admin-ajax.php`, {
-                method: "POST",
-                headers: {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                    "Referer": `${siteBaseUrl}/`,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Requested-With": "XMLHttpRequest",
-                },
-                body: `action=doo_player_ajax&post=${post}&nume=${nume}&type=${type}`,
-                signal: AbortSignal.timeout(4000),
-            });
+    // Process in batches to avoid overwhelming the server and causing IP bans / 503 errors
+    for (let i = 0; i < dooplaySources.length; i += BATCH_SIZE) {
+        const batch = dooplaySources.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.allSettled(
+            batch.map(async (source) => {
+                const [, type, post, nume] = source.url.split(":");
 
-            if (!response.ok) {
-                throw new Error(`AJAX ${response.status} for nume=${nume}`);
-            }
+                const response = await fetch(`${siteBaseUrl}/wp-admin/admin-ajax.php`, {
+                    method: "POST",
+                    headers: {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                        "Referer": `${siteBaseUrl}/`,
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                    body: `action=doo_player_ajax&post=${post}&nume=${nume}&type=${type}`,
+                    signal: AbortSignal.timeout(4000),
+                });
 
-            const data = await response.json();
-            const embedUrl = data.embed_url;
+                if (!response.ok) {
+                    throw new Error(`AJAX ${response.status} for nume=${nume}`);
+                }
 
-            if (!embedUrl) {
-                throw new Error(`No embed_url in AJAX response for nume=${nume}`);
-            }
+                const data = await response.json();
+                const embedUrl = data.embed_url;
 
-            console.log(`[Adapter:redecanaistv] ✓ ${source.label} → ${embedUrl.substring(0, 60)}...`);
+                if (!embedUrl) {
+                    throw new Error(`No embed_url in AJAX response for nume=${nume}`);
+                }
 
-            return {
-                ...source,
-                url: embedUrl,
-            };
-        })
-    );
+                console.log(`[Adapter:redecanaistv] ✓ ${source.label} → ${embedUrl.substring(0, 60)}...`);
+
+                return {
+                    ...source,
+                    url: embedUrl,
+                };
+            })
+        );
+        resolved.push(...batchResults);
+    }
 
     const resolvedSources: StreamSource[] = [...otherSources];
     for (const result of resolved) {
