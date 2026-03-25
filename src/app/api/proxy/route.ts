@@ -17,6 +17,7 @@ const REFERER_MAP: Record<string, string> = {
 
     // redecanaistv streams
     "redecanaistv": "https://redecanaistv.fm/",
+    "redecanaistv.in": "https://redecanaistv.fm/",
 
     // Default fallback
     "cloudfront-net.online": "https://multicanaishd.best/",

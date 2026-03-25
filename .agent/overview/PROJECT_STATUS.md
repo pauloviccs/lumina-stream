@@ -6,7 +6,7 @@ Lumina Stream
 
 ## Description
 
-Plataforma de streaming de vídeo ao vivo e sob demanda, estilo TV por internet (IPTV). Permite que usuários assistam canais de TV e filmes diretamente no navegador via player HLS. Integra-se ao Supabase como backend (autenticação, banco de dados, storage).
+Plataforma de streaming de vídeo ao vivo e sob demanda, estilo TV por internet (IPTV). Permite que usuários assistam canais de TV e filmes diretamente no navegador via player HLS. Integra-se ao Supabase como backend (autenticação, banco de dados, storage). Usa um sistema modular de adapters para scraping dinâmico de fontes de transmissão.
 
 ## Tech Stack
 
@@ -29,8 +29,8 @@ Plataforma de streaming de vídeo ao vivo e sob demanda, estilo TV por internet 
 
 ```text
 lumina-stream/
-├── .agent/                    # Configurações do agente
-│   ├── CHANNEL_PUSHING.md     # Docs: método de channel pushing (BBB)
+├── .agent/
+│   ├── CHANNEL_PUSHING.md     # Docs: sistema de adapters/plugins
 │   └── overview/
 │       └── PROJECT_STATUS.md  # Este arquivo
 ├── img/
@@ -43,12 +43,11 @@ lumina-stream/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── proxy/         # API route — proxy de streams HLS
-│   │   │   └── scrape-stream/ # API route — scraping de URLs de stream
+│   │   │   └── scrape-stream/ # API route — registry-based scraping
 │   │   ├── watch/
-│   │   │   └── [id]/          # Página dinâmica do player
-│   │   │       ├── page.tsx         # Player principal
-│   │   │       ├── SourceSelector.tsx
-│   │   │       └── StreamSelector.tsx
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx         # Player principal (server)
+│   │   │       └── StreamSelector.tsx # Seletor de fontes (client)
 │   │   ├── layout.tsx         # Root layout (fontes, metadata)
 │   │   ├── page.tsx           # Homepage
 │   │   ├── globals.css        # CSS global + design tokens
@@ -57,8 +56,14 @@ lumina-stream/
 │   │   ├── ChannelCard.tsx    # Card de canal
 │   │   ├── ChannelCarousel.tsx # Carrossel de canais
 │   │   ├── HeroSection.tsx    # Hero da homepage
-│   │   └── VideoPlayer.tsx    # Player HLS reutilizável
+│   │   └── VideoPlayer.tsx    # Player HLS (referer declarativo)
 │   ├── lib/
+│   │   ├── adapters/          # ← NOVO: Sistema de plugins
+│   │   │   ├── types.ts       # Interfaces base
+│   │   │   ├── registry.ts    # Registro central + execução paralela
+│   │   │   ├── multicanaishd.ts  # Adapter multicanaishd.best
+│   │   │   ├── redecanaistv.ts   # Adapter redecanaistv.in
+│   │   │   └── bbb26shop.ts     # Adapter bbb26.shop (blocked)
 │   │   └── utils.ts           # cn() helper (clsx + tailwind-merge)
 │   ├── types/
 │   │   └── supabase.ts        # Tipos gerados do Supabase
@@ -79,27 +84,36 @@ lumina-stream/
 - **Homepage** com hero section e carrossel de canais (dados do Supabase)
 - **Player de vídeo HLS** com suporte a múltiplas fontes/streams por canal
 - **Página dinâmica `/watch/[id]`** com seletor de fonte e seletor de stream
+- **Sistema de Adapters** modular para scraping dinâmico (v2)
+  - Adapters executados em paralelo via `Promise.allSettled`
+  - Cache in-memory de 5 minutos
+  - Referer declarativo passado ao proxy CORS
+  - Estado "Transmissões Offline" quando todos os adapters falham
+  - Loading state animado ("Puxando Sinal HD...")
+  - Fade-in Framer Motion na troca de fontes
 - **API Proxy** (`/api/proxy`) para contornar CORS em streams HLS
-- **API Scrape** (`/api/scrape-stream`) para extrair URLs de stream de páginas externas (sem limite de fontes — capta todas disponíveis)
-- **Integração Supabase** completa (client + server via SSR)
+- **API Scrape** (`/api/scrape-stream`) — delega ao registry de adapters
+- **Integração Supabase** — dados de canal apenas (sem fallback de fontes)
 - **Design system** HSL-based com dark mode, fontes Inter/Outfit, e tokens de cor
+- **Touch targets** mínimos de 44px nos botões de fonte (acessibilidade mobile)
 - **Animações** com Framer Motion nos componentes visuais
 - **Toasts** (Sonner) e **Drawers** (Vaul) disponíveis
 
 ## Work-in-Progress
 
-- Refinamento da UI do player e seletores de stream
+- Ativação do adapter bbb26shop (Cloudflare challenge bypass)
 - Expansão do catálogo de canais e filmes
-- Possível implementação de autenticação de usuário
+- Possível migração do scraping para Supabase Edge Functions com cron
 
 ## Known TODOs / Missing Parts
 
-- Autenticação de usuário não implementada (Supabase Auth está configurado mas sem fluxo de login)
+- Autenticação de usuário não implementada (Supabase Auth configurado mas sem fluxo de login)
 - Sem testes automatizados (unit/e2e)
-- Arquivo `scrape_result.json` e `temp_html.txt` na raiz são artefatos de debug — devem ser removidos ou adicionados ao `.gitignore`
-- `manifest_test.txt` na raiz parece ser artefato temporário
+- `scrape_result.json`, `temp_html.txt` e `manifest_test.txt` na raiz são artefatos de debug — devem ser removidos
 - Sem PWA/manifest configurado
 - Sem CI/CD pipeline
+- Cache in-memory não persiste entre serverless lambdas (Vercel) — futuro: Edge Function com cron
 
 ---
-*Última atualização: 2026-02-14 18:10*
+
+*Última atualização: 2026-03-25*

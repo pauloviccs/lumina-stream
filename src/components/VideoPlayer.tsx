@@ -8,11 +8,13 @@ import Hls from "hls.js";
 interface VideoPlayerProps {
     src: string;
     poster?: string;
+    /** Referer declarativo do adapter — passado ao proxy CORS */
+    referer?: string;
     isTheaterMode?: boolean;
     onTheaterModeToggle?: () => void;
 }
 
-export function VideoPlayer({ src, poster, isTheaterMode, onTheaterModeToggle }: VideoPlayerProps) {
+export function VideoPlayer({ src, poster, referer, isTheaterMode, onTheaterModeToggle }: VideoPlayerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -38,7 +40,11 @@ export function VideoPlayer({ src, poster, isTheaterMode, onTheaterModeToggle }:
             // (scraping generates tokens for Vercel's IP, so proxy works correctly)
             const cleanSrc = src.trim();
             const isExternal = cleanSrc.startsWith('http');
-            const finalUrl = isExternal ? `/api/proxy?url=${encodeURIComponent(cleanSrc)}` : cleanSrc;
+            let finalUrl = isExternal ? `/api/proxy?url=${encodeURIComponent(cleanSrc)}` : cleanSrc;
+            // Referer declarativo do adapter — passa ao proxy para CORS correto
+            if (isExternal && referer) {
+                finalUrl += `&referer=${encodeURIComponent(referer)}`;
+            }
 
             console.log('[VideoPlayer] Loading stream via proxy');
 

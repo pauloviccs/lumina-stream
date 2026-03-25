@@ -1,187 +1,181 @@
-# Channel Pushing — Big Brother Brasil 26
+# Channel Pushing v2 — Sistema de Plugins/Adapters
 
-Documentação detalhada do método e stack usados para adicionar as transmissões (fontes de stream) ao canal BBB 26 no Lumina Stream.
+Documentação do sistema de scraping modular do Lumina Stream. Cada fonte de transmissão é gerenciada por um **adapter** isolado.
 
 ---
 
 ## Visão Geral do Fluxo
 
-O BBB 26 usa um **pipeline de scraping dinâmico** — as fontes de transmissão **não ficam salvas no Supabase**. Elas são extraídas em tempo real de um site externo a cada acesso à página do canal.
-
 ```
 Usuário abre /watch/[id]
         │
         ▼
-   ┌─────────────────────┐
-   │  page.tsx (Server)   │ ← Detecta se o canal suporta scraping
-   │  getScrapableSlug()  │
-   └──────────┬──────────┘
-              │ sim
+   ┌─────────────────────────┐
+   │  page.tsx (Server)       │ ← resolveChannelSlug() do registry
+   └──────────┬──────────────┘
+              │ canal suporta scraping?
               ▼
-   ┌─────────────────────────────┐
-   │  GET /api/scrape-stream     │ ← Faz fetch do HTML do site fonte
-   │  ?channel=big-brother-...   │
-   └──────────┬──────────────────┘
+   ┌──────────────────────────────┐
+   │  GET /api/scrape-stream       │ ← Chama registry.scrapeChannel()
+   │  ?channel=big-brother-...     │
+   └──────────┬───────────────────┘
               │
               ▼
-   ┌──────────────────────────────────┐
-   │  Regex extrai data-url e labels  │ ← Até 10 fontes
-   │  Retorna array de StreamSource[] │
-   └──────────┬───────────────────────┘
+   ┌────────────────────────────────────┐
+   │  Registry executa adapters em      │
+   │  PARALELO (Promise.allSettled)     │
+   │                                    │
+   │  ┌───────────────┐ ┌────────────┐ │
+   │  │ multicanaishd  │ │redecanaistv│ │
+   │  │  (regex)       │ │  (regex)   │ │
+   │  └───────┬───────┘ └─────┬──────┘ │
+   │          └───────┬───────┘         │
+   │                  ▼                 │
+   │        Mescla StreamSource[]       │
+   │        + cache 5 min               │
+   └──────────┬─────────────────────────┘
               │
               ▼
-   ┌───────────────────────────┐
-   │  StreamSelector (Client)  │ ← Renderiza player ou iframe
-   │  + VideoPlayer ou iframe  │
-   └───────────────────────────┘
+   ┌────────────────────────────────┐
+   │  StreamSelector (Client)       │
+   │  • sources → Player/iframe     │
+   │  • [] + offline → Tela Offline │
+   │  • Fade-in Framer Motion       │
+   └────────────────────────────────┘
 ```
 
 ---
 
-## Camadas do Pipeline
+## Arquitetura de Adapters
 
-### 1. Detecção de Canal Scrapável — `page.tsx`
+### Pasta: `src/lib/adapters/`
 
-**Arquivo:** `src/app/watch/[id]/page.tsx`
+| Arquivo | Descrição |
+|---------|-----------|
+| `types.ts` | Interfaces: `ChannelAdapter`, `StreamSource`, `ScrapeResult` |
+| `registry.ts` | Registro central: mapeamento de canais → adapters, cache, execução paralela |
+| `multicanaishd.ts` | Adapter para multicanaishd.best |
+| `redecanaistv.ts` | Adapter para redecanaistv.in |
+| `bbb26shop.ts` | Adapter para bbb26.shop (⚠️ **blocked** — Cloudflare) |
 
-O mapeamento `SCRAPE_SUPPORTED_CHANNELS` define quais canais usam scraping:
+### Interface `ChannelAdapter`
 
 ```ts
-const SCRAPE_SUPPORTED_CHANNELS: Record<string, string> = {
-    "big-brother-brasil-26": "big-brother-brasil-26",
-    "big brother brasil 26": "big-brother-brasil-26",
-    "bbb 26": "big-brother-brasil-26",
-    "bbb26": "big-brother-brasil-26",
-};
-```
-
-A função `getScrapableSlug()` faz match exato ou parcial no nome do canal. Se encontrar, chama a API interna.
-
----
-
-### 2. Scraper API — `/api/scrape-stream`
-
-**Arquivo:** `src/app/api/scrape-stream/route.ts`
-
-| Item | Detalhe |
-|------|---------|
-| **URL fonte** | `https://multicanaishd.best/canal/big-brother-brasil-26/` |
-| **Método** | `GET` com headers de browser (User-Agent Chrome, Referer, Accept-Language pt-BR) |
-| **Extração** | Regex: `data-url=["']([^"']+)["'][^>]*>([^<]+)` — captura URL e label dos links |
-| **Limite** | Máximo 10 fontes por request |
-| **Cache** | In-memory Map com TTL de 5 minutos |
-| **Tipo de fonte** | Todas retornam como `type: "iframe"` (streams são IP-locked, m3u8 direto não funciona) |
-
-**Formato de retorno:**
-
-```json
-{
-  "sources": [
-    { "id": "iframe-1", "label": "Opção 1", "url": "https://...", "quality": "HD", "type": "iframe" },
-    { "id": "iframe-2", "label": "Opção 2", "url": "https://...", "quality": "HD", "type": "iframe" }
-  ],
-  "cached": false
+interface ChannelAdapter {
+    id: string;          // "multicanaishd"
+    name: string;        // "MultiCanais HD"
+    baseUrl: string;     // "https://multicanaishd.best"
+    status: "active" | "blocked" | "deprecated";
+    buildUrl(channelPath: string): string;
+    parseHtml(html: string, channelPath: string): StreamSource[];
+    getHeaders(): HeadersInit;
+    getChannelPath(registryPath: string): string;
 }
 ```
 
-**Fallback:** Se o scraper não retornar fontes, o sistema usa as fontes estáticas do Supabase (tabela `stream_sources`).
+### Interface `StreamSource` (v2)
+
+```ts
+interface StreamSource {
+    id: string;
+    label: string;
+    url: string;
+    quality: string;
+    type: "m3u8" | "iframe";
+    referer?: string;     // ← NOVO: Referer declarativo para o proxy
+    adapterId?: string;   // ← NOVO: ID do adapter que gerou esta fonte
+}
+```
 
 ---
 
-### 3. Proxy CORS — `/api/proxy`
+## Adapters Ativos
 
-**Arquivo:** `src/app/api/proxy/route.ts`
-
-Usado quando o tipo da fonte é `m3u8` (não é o caso atual do BBB que usa iframes). O proxy:
-
-- Recebe `?url=<stream_url>&referer=<referer>`
-- Faz fetch com headers corretos (User-Agent, Referer, Origin)
-- Para manifestos `.m3u8`: reescreve URLs internas para passar pelo proxy
-- Para segmentos `.ts`: faz pass-through binário
-- Adiciona `Access-Control-Allow-Origin: *`
-
-**Mapa de Referers conhecidos:**
-
-| Domínio | Referer |
-|---------|---------|
-| `vipcanaisplay.site` | `embedtvonline.com` |
-| `imgcontent.xyz` | `rdcanais.top` |
-| `nossoplayeronlinehd` | `nossoplayeronlinehd.online` |
-| `meuplayeronlinehd` | `meuplayeronlinehd.com` |
-| fallback | `multicanaishd.best` |
+| Adapter | Site | Status | Tipo |
+|---------|------|--------|------|
+| `multicanaishd` | multicanaishd.best | ✅ Active | iframe (data-url regex) |
+| `redecanaistv` | www6.redecanaistv.in | ✅ Active | iframe (data-url regex + iframe fallback) |
+| `bbb26shop` | bbb26.shop | ⚠️ Blocked | Cloudflare Challenge |
 
 ---
 
-### 4. Renderização — `StreamSelector.tsx`
+## Como Adicionar um Novo Canal
 
-**Arquivo:** `src/app/watch/[id]/StreamSelector.tsx`
-
-Decide como exibir a fonte baseado no `type`:
-
-| Tipo | Renderização |
-|------|-------------|
-| `iframe` | `<iframe>` embed direto do player externo |
-| `m3u8` ou undefined | `<VideoPlayer>` com hls.js via proxy |
-
-O BBB atual usa **100% iframe** porque os streams são IP-locked.
-
----
-
-### 5. Banco de Dados (Fallback) — Supabase
-
-**Tabelas envolvidas:**
-
-#### `channels`
-
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| `id` | uuid | PK — usado na rota `/watch/[id]` |
-| `name` | text | Ex: "Big Brother Brasil 26" |
-| `category` | text | Ex: "Reality Show" |
-| `logo_url` | text? | URL do logo |
-| `image_color` | text | Cor de fundo hex |
-| `is_featured` | bool | Destaque na homepage |
-
-#### `stream_sources`
-
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| `id` | uuid | PK |
-| `channel_id` | uuid | FK → channels.id |
-| `label` | text | Ex: "Opção 1" |
-| `url` | text | URL do stream (m3u8 ou iframe) |
-| `quality` | text | Ex: "HD", "SD" |
-| `type` | text | "hls" ou "iframe" |
-
-> **Nota:** Para o BBB, as fontes do Supabase servem apenas como **fallback**. O scraper dinâmico tem prioridade.
+1. **Adicionar o canal no Supabase** (tabela `channels`) — nome, categoria, logo
+2. **Criar adapter** (se o site-fonte é novo):
+   - Copiar `src/lib/adapters/multicanaishd.ts` como template
+   - Ajustar `id`, `name`, `baseUrl`, `buildUrl()`, `parseHtml()`
+   - Identificar regex/padrão HTML do site
+3. **Registrar no registry** (`src/lib/adapters/registry.ts`):
+   - Importar o novo adapter
+   - Adicionar ao `ADAPTER_MAP`
+   - Adicionar entrada em `CHANNEL_REGISTRY` com paths por adapter
+   - Adicionar aliases de slug em `SLUG_ALIASES`
+4. **Testar**: `http://localhost:3000/api/scrape-stream?channel=<slug>`
+5. **Opcional**: Adicionar domínios no `REFERER_MAP` do proxy se usar m3u8
 
 ---
 
-## Como Adicionar um Novo Canal com Scraping
+## Como Adicionar um Novo Adapter
 
-1. **Adicionar o canal no Supabase** (tabela `channels`) com nome, categoria, logo, etc.
-2. **Mapear o slug** em dois lugares:
-   - `SCRAPE_SUPPORTED_CHANNELS` em `page.tsx` — para detecção server-side
-   - `CHANNEL_MAP` em `scrape-stream/route.ts` — para resolver a URL fonte
-3. **Identificar a estrutura HTML** do site fonte e ajustar o regex se necessário
-4. **Testar** acessando `/api/scrape-stream?channel=<slug>` diretamente
-5. **Opcional:** Adicionar domínios de stream no `REFERER_MAP` do proxy se usar m3u8
+```ts
+// src/lib/adapters/meusite.ts
+import { ChannelAdapter, StreamSource } from "./types";
+
+export const meusite: ChannelAdapter = {
+    id: "meusite",
+    name: "Meu Site TV",
+    baseUrl: "https://meusitetv.com",
+    status: "active",
+
+    buildUrl(channelPath) {
+        return `${this.baseUrl}/canal/${channelPath}/`;
+    },
+
+    getHeaders() {
+        return {
+            "User-Agent": "Mozilla/5.0 ...",
+            "Referer": `${this.baseUrl}/`,
+        };
+    },
+
+    getChannelPath(registryPath) {
+        return registryPath;
+    },
+
+    parseHtml(html, channelPath) {
+        // Seu regex ou parser aqui
+        const regex = /data-url=["']([^"']+)["'][^>]*>([^<]+)/gi;
+        const matches = [...html.matchAll(regex)];
+        return matches.map((m, i) => ({
+            id: `${this.id}-${i + 1}`,
+            label: m[2].trim(),
+            url: m[1].startsWith("http") ? m[1] : `https:${m[1]}`,
+            quality: "HD",
+            type: "iframe" as const,
+            referer: `${this.baseUrl}/`,
+            adapterId: this.id,
+        }));
+    },
+};
+```
 
 ---
 
-## Stack Tecnológico Resumido
+## Pipeline Técnico
 
 | Camada | Tecnologia |
 |--------|-----------|
 | Frontend | Next.js 16 (App Router) + React 19 |
-| Player HLS | hls.js 1.6 |
-| Player Iframe | `<iframe>` nativo |
-| Scraping | Server-side `fetch` + Regex (Node.js runtime) |
-| Proxy CORS | Next.js API Route com rewrite de manifesto |
-| Cache | In-memory `Map` (TTL 5min) |
-| Banco de dados | Supabase (PostgreSQL) |
+| Player HLS | hls.js 1.6 com referer declarativo |
+| Player Iframe | `<iframe>` nativo com fade-in Framer Motion |
+| Adapters | TypeScript modules isolados (1 por site-fonte) |
+| Registry | Execução paralela `Promise.allSettled` + cache Map 5min |
+| Proxy CORS | Next.js API Route com `?referer=` override |
+| UI States | Loading ("Puxando Sinal HD...") / Offline ("Transmissões Offline") |
+| Banco de dados | Supabase (PostgreSQL) — apenas dados de canal, **sem fallback de fontes** |
 | Deploy | Vercel (serverless) |
 
 ---
 
-*Última atualização: 2026-02-14*
+*Última atualização: 2026-03-25*

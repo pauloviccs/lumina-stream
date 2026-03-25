@@ -1,58 +1,32 @@
 import { createClient } from "@/utils/supabase/server";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-// Client component for source selection
 import { StreamSelector } from "./StreamSelector";
+import { resolveChannelSlug } from "@/lib/adapters/registry";
 
 // Force dynamic rendering to always get fresh streams
 export const dynamic = 'force-dynamic';
 
-// Channels that support dynamic scraping
-const SCRAPE_SUPPORTED_CHANNELS: Record<string, string> = {
-    "big-brother-brasil-26": "big-brother-brasil-26",
-    "big brother brasil 26": "big-brother-brasil-26",
-    "big brother brasil": "big-brother-brasil-26",
-    "bbb 26": "big-brother-brasil-26",
-    "bbb26": "big-brother-brasil-26",
-    // Add more as needed
-};
-
-// Helper: Check if channel name matches a scrapeable channel
-function getScrapableSlug(channelName: string): string | null {
-    const normalized = channelName.toLowerCase().trim();
-
-    // Direct match
-    if (SCRAPE_SUPPORTED_CHANNELS[normalized]) {
-        return SCRAPE_SUPPORTED_CHANNELS[normalized];
-    }
-
-    // Partial match
-    for (const [key, value] of Object.entries(SCRAPE_SUPPORTED_CHANNELS)) {
-        if (normalized.includes(key) || key.includes(normalized)) {
-            return value;
-        }
-    }
-
-    return null;
-}
-
 // Helper: Fetch dynamic streams from scraper API
-async function fetchDynamicStreams(channelSlug: string, baseUrl: string): Promise<any[]> {
+async function fetchDynamicStreams(channelSlug: string, baseUrl: string) {
     try {
         const response = await fetch(`${baseUrl}/api/scrape-stream?channel=${encodeURIComponent(channelSlug)}`, {
-            cache: 'no-store', // Always fresh
+            cache: 'no-store',
         });
 
         if (!response.ok) {
             console.error(`[WatchPage] Scraper returned ${response.status}`);
-            return [];
+            return { sources: [], status: "offline" as const };
         }
 
         const data = await response.json();
-        return data.sources || [];
+        return {
+            sources: data.sources || [],
+            status: (data.status || (data.sources?.length > 0 ? "online" : "offline")) as "online" | "offline",
+        };
     } catch (error) {
         console.error("[WatchPage] Failed to fetch dynamic streams:", error);
-        return [];
+        return { sources: [], status: "offline" as const };
     }
 }
 
@@ -60,51 +34,49 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     const { id } = await params;
     const supabase = await createClient();
 
-    // Parallel fetch for channel and sources
-    const [channelRes, sourcesRes] = await Promise.all([
-        supabase.from('channels').select('*').eq('id', id).single(),
-        supabase.from('stream_sources').select('*').eq('channel_id', id)
-    ]);
-
-    const channel = channelRes.data;
-    let sources = sourcesRes.data || [];
+    // Buscar dados do canal no Supabase (nome, logo, categoria — NÃO fontes)
+    const { data: channel } = await supabase
+        .from('channels')
+        .select('*')
+        .eq('id', id)
+        .single();
 
     if (!channel) {
         return <div className="p-12 text-white">Canal não encontrado.</div>;
     }
 
-    // Check if this channel supports dynamic scraping
-    const scrapableSlug = getScrapableSlug(channel.name);
+    // Verificar se o canal suporta scraping dinâmico
+    const scrapableSlug = resolveChannelSlug(channel.name);
+
+    let sources: any[] = [];
+    let isOffline = false;
 
     if (scrapableSlug) {
-        console.log(`[WatchPage] Channel "${channel.name}" supports scraping, fetching dynamic streams...`);
+        console.log(`[WatchPage] Channel "${channel.name}" supports scraping → ${scrapableSlug}`);
 
-        // Get the base URL for internal API calls
-        // Priority: Production URL > Preview URL > localhost
         const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
             ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
             : process.env.VERCEL_URL
                 ? `https://${process.env.VERCEL_URL}`
                 : 'http://localhost:3000';
-        // // Priority: Custom site URL > VERCEL_URL > localhost
-        // // Set NEXT_PUBLIC_SITE_URL in Vercel to https://lumiastream.vercel.app
-        // const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
-        //     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-        //     || 'http://localhost:3000';
 
         console.log(`[WatchPage] Using baseUrl: ${baseUrl}`);
 
-        const dynamicSources = await fetchDynamicStreams(scrapableSlug, baseUrl);
+        const result = await fetchDynamicStreams(scrapableSlug, baseUrl);
+        sources = result.sources;
+        isOffline = result.status === "offline";
 
-        if (dynamicSources.length > 0) {
-            console.log(`[WatchPage] Using ${dynamicSources.length} dynamic streams`);
-            sources = dynamicSources;
+        if (isOffline) {
+            console.warn(`[WatchPage] All adapters offline for "${channel.name}"`);
         } else {
-            console.warn(`[WatchPage] No dynamic streams found, falling back to Supabase sources`);
+            console.log(`[WatchPage] ${sources.length} sources loaded for "${channel.name}"`);
         }
+    } else {
+        // Canal sem scraping — marcar como offline (sem fallback Supabase)
+        isOffline = true;
     }
 
-    // Sort sources: "Câmera" first (natural sort), then alphabetical
+    // Ordenar: "Câmera" primeiro, depois alfabético
     sources.sort((a: any, b: any) => {
         const isCameraA = a.label?.startsWith('Câmera') || false;
         const isCameraB = b.label?.startsWith('Câmera') || false;
@@ -131,8 +103,8 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
                 </div>
             </header>
 
-            {/* We pass the sources to a client component because managing selected source state happens on the client */}
-            <StreamSelector sources={sources} channelName={channel.name} />
+            {/* StreamSelector recebe isOffline para decidir entre player ou tela offline */}
+            <StreamSelector sources={sources} channelName={channel.name} isOffline={isOffline} />
         </div>
     );
 }
